@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,6 +29,7 @@ export default function LiveScreen() {
   const cameraRef = useRef<CameraView | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -40,14 +42,15 @@ export default function LiveScreen() {
         socket.onopen = () => {
           if (isActive) setConnected(true);
           startFrameCapture();
+          startPulse();
         };
 
         socket.onmessage = (event) => {
           const data = JSON.parse(event.data);
           if (data.type === 'motion_alert') {
-            addAlert('motion', `Motion detected (score: ${Math.round(data.score)})`);
+            addAlert('motion', 'Motion detected in the room');
           } else if (data.type === 'cry_alert') {
-            addAlert('cry', `Cry detected (volume: ${Math.round(data.volume)})`);
+            addAlert('cry', 'Crying detected');
           }
         };
 
@@ -72,12 +75,21 @@ export default function LiveScreen() {
     }, [])
   );
 
+  function startPulse() {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.4, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }
+
   function addAlert(type: string, message: string) {
     const newAlert: AlertItem = {
       id: Date.now().toString(),
       type,
       message,
-      time: new Date().toLocaleTimeString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     };
     setAlerts((prev) => [newAlert, ...prev].slice(0, 20));
   }
@@ -85,21 +97,19 @@ export default function LiveScreen() {
   function startFrameCapture() {
     intervalRef.current = setInterval(async () => {
       if (!cameraRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
-
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.3,
           base64: true,
           skipProcessing: true,
         });
-
         if (photo?.base64) {
           wsRef.current.send(
             JSON.stringify({ type: 'video_frame', frame: `data:image/jpeg;base64,${photo.base64}` })
           );
         }
       } catch (error) {
-        // Frame capture failed silently — skip this cycle
+        // skip this cycle silently
       }
     }, FRAME_INTERVAL_MS);
   }
@@ -118,7 +128,13 @@ export default function LiveScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Camera access is needed to monitor your baby.</Text>
+        <View style={styles.permissionIconCircle}>
+          <Text style={styles.permissionIcon}>CAM</Text>
+        </View>
+        <Text style={styles.permissionTitle}>Camera Access Needed</Text>
+        <Text style={styles.permissionText}>
+          Baby Care needs your camera to watch over your baby and detect motion in real time.
+        </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
         </TouchableOpacity>
@@ -130,26 +146,61 @@ export default function LiveScreen() {
     <View style={styles.container}>
       <View style={styles.cameraContainer}>
         <CameraView ref={cameraRef} style={styles.camera} facing="back" />
-        <View style={styles.statusBadge}>
-          <View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.danger }]} />
-          <Text style={styles.statusText}>{connected ? 'Live' : 'Connecting...'}</Text>
+
+        <View style={styles.topOverlay} pointerEvents="none">
+          <View style={styles.statusBadge}>
+            <Animated.View
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor: connected ? colors.success : colors.danger,
+                  transform: [{ scale: connected ? pulseAnim : 1 }],
+                },
+              ]}
+            />
+            <Text style={styles.statusText}>{connected ? 'Live' : 'Connecting'}</Text>
+          </View>
+          <View style={styles.roomBadge}>
+            <Text style={styles.roomBadgeText}>{ROOM_NAME}</Text>
+          </View>
         </View>
+
+        <View style={styles.bottomFade} pointerEvents="none" />
       </View>
 
       <View style={styles.alertsSection}>
-        <Text style={styles.alertsTitle}>Recent Alerts</Text>
-        <ScrollView style={styles.alertsList}>
+        <View style={styles.alertsHeader}>
+          <Text style={styles.alertsTitle}>Recent Alerts</Text>
+          {alerts.length > 0 && (
+            <View style={styles.alertsCountBadge}>
+              <Text style={styles.alertsCountText}>{alerts.length}</Text>
+            </View>
+          )}
+        </View>
+
+        <ScrollView style={styles.alertsList} showsVerticalScrollIndicator={false}>
           {alerts.length === 0 ? (
-            <Text style={styles.emptyText}>No alerts yet — all quiet.</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>ZZZ</Text>
+              <Text style={styles.emptyText}>All quiet right now</Text>
+              <Text style={styles.emptySubtext}>You'll see motion and cry alerts here as they happen.</Text>
+            </View>
           ) : (
             alerts.map((alert) => (
               <View key={alert.id} style={styles.alertCard}>
                 <View
                   style={[
-                    styles.alertDot,
-                    { backgroundColor: alert.type === 'cry' ? colors.danger : colors.primary },
+                    styles.alertIconCircle,
+                    { backgroundColor: alert.type === 'cry' ? '#FDECEC' : '#E9F0FE' },
                   ]}
-                />
+                >
+                  <View
+                    style={[
+                      styles.alertDot,
+                      { backgroundColor: alert.type === 'cry' ? colors.danger : colors.primary },
+                    ]}
+                  />
+                </View>
                 <View style={styles.alertContent}>
                   <Text style={styles.alertMessage}>{alert.message}</Text>
                   <Text style={styles.alertTime}>{alert.time}</Text>
@@ -171,49 +222,115 @@ const styles = StyleSheet.create({
   cameraContainer: {
     height: '45%',
     backgroundColor: '#000',
+    position: 'relative',
   },
   camera: {
     flex: 1,
   },
-  statusBadge: {
+  topOverlay: {
     position: 'absolute',
     top: spacing.md,
+    left: spacing.md,
     right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    zIndex: 10,
+    elevation: 10,
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing.xs,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: spacing.sm,
   },
   statusText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  roomBadge: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  roomBadgeText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
+  },
+  bottomFade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: 9,
+    elevation: 9,
   },
   alertsSection: {
     flex: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  alertsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   alertsTitle: {
     ...typography.h2,
     color: colors.text,
-    marginBottom: spacing.md,
+  },
+  alertsCountBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    minWidth: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+    paddingHorizontal: 6,
+  },
+  alertsCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   alertsList: {
     flex: 1,
   },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyEmoji: {
+    fontSize: 13,
+    color: colors.textMuted,
+    letterSpacing: 2,
+    marginBottom: spacing.sm,
+  },
   emptyText: {
     ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  emptySubtext: {
+    ...typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.xl,
   },
   alertCard: {
     flexDirection: 'row',
@@ -222,12 +339,24 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  alertIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
   alertDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    marginRight: spacing.md,
   },
   alertContent: {
     flex: 1,
@@ -235,6 +364,7 @@ const styles = StyleSheet.create({
   alertMessage: {
     ...typography.body,
     color: colors.text,
+    fontWeight: '500',
   },
   alertTime: {
     ...typography.caption,
@@ -246,19 +376,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
-    padding: spacing.lg,
+    padding: spacing.xl,
+  },
+  permissionIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  permissionIcon: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 1,
+  },
+  permissionTitle: {
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   permissionText: {
     ...typography.body,
-    color: colors.text,
+    color: colors.textMuted,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    lineHeight: 22,
   },
   permissionButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm + 6,
   },
   permissionButtonText: {
     color: '#fff',
