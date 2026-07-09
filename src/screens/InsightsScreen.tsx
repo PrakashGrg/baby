@@ -1,16 +1,170 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, typography } from '../theme';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  RefreshControl,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { activityAPI } from '../api/client';
+import { colors, radius, spacing, typography } from '../theme';
+
+const ROOM_NAME = 'room1';
+
+interface TimelineEvent {
+  type: string;
+  message: string;
+  timestamp: string;
+  value: number | null;
+}
 
 export default function InsightsScreen() {
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadData() {
+    try {
+      const response = await activityAPI.timeline(ROOM_NAME);
+      setEvents(response.data);
+    } catch (error) {
+      console.log('Failed to load timeline', error);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }
+
+  function getEventStyle(type: string) {
+    switch (type) {
+      case 'cry':
+        return { bg: '#FDECEC', dot: colors.danger };
+      case 'sleep':
+        return { bg: '#EDE9FE', dot: colors.accent };
+      default:
+        return { bg: '#E9F0FE', dot: colors.primary };
+    }
+  }
+
+  function formatDate(timestamp: string) {
+    const date = new Date(timestamp);
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    const dateStr = date.toDateString();
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (dateStr === today) return `Today, ${time}`;
+    if (dateStr === yesterday) return `Yesterday, ${time}`;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Insights - coming soon</Text>
-    </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <Text style={styles.title}>Insights</Text>
+      <Text style={styles.subtitle}>A timeline of everything happening with your baby.</Text>
+
+      {events.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No events recorded yet.</Text>
+        </View>
+      ) : (
+        events.map((event, index) => {
+          const style = getEventStyle(event.type);
+          return (
+            <View key={index} style={styles.eventCard}>
+              <View style={[styles.iconCircle, { backgroundColor: style.bg }]}>
+                <View style={[styles.dot, { backgroundColor: style.dot }]} />
+              </View>
+              <View style={styles.eventContent}>
+                <Text style={styles.eventMessage}>{event.message}</Text>
+                <Text style={styles.eventTime}>{formatDate(event.timestamp)}</Text>
+              </View>
+            </View>
+          );
+        })
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-  text: { ...typography.body, color: colors.textMuted },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+  },
+  title: {
+    ...typography.h1,
+    color: colors.text,
+  },
+  subtitle: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textMuted,
+  },
+  eventCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  eventContent: {
+    flex: 1,
+  },
+  eventMessage: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  eventTime: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 });

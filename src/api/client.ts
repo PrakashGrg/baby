@@ -61,11 +61,15 @@ export const authAPI = {
 export const activityAPI = {
   dailySummary: (roomName: string = 'room1') =>
     apiClient.get(`/activity/daily-summary/?room_name=${roomName}`),
+  timeline: (roomName: string = 'room1') =>
+    apiClient.get(`/activity/timeline/?room_name=${roomName}`),
 };
 
 export const sleepAPI = {
   status: (roomName: string = 'room1') =>
     apiClient.get(`/sleep/status/?room_name=${roomName}`),
+  history: (roomName: string = 'room1') =>
+    apiClient.get(`/sleep/history/?room_name=${roomName}`),
 };
 
 export const sensorsAPI = {

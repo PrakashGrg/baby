@@ -22,7 +22,7 @@ interface Summary {
 }
 
 export default function HomeScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [sleepState, setSleepState] = useState<string>('unknown');
   const [refreshing, setRefreshing] = useState(false);
@@ -100,9 +100,6 @@ export default function HomeScreen() {
         />
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
