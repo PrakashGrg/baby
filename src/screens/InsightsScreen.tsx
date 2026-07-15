@@ -7,8 +7,10 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { activityAPI } from '../api/client';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 
@@ -44,14 +46,17 @@ export default function InsightsScreen() {
     setRefreshing(false);
   }
 
-  function getEventStyle(type: string) {
+  function getEventStyle(type: string, message: string) {
     switch (type) {
       case 'cry':
-        return { bg: '#FDECEC', dot: colors.danger };
+        return { gradient: gradients.coral, icon: 'volume-high' as const };
       case 'sleep':
-        return { bg: '#EDE9FE', dot: colors.accent };
+        return {
+          gradient: gradients.lavender,
+          icon: (message.includes('asleep') ? 'moon' : 'sunny') as const,
+        };
       default:
-        return { bg: '#E9F0FE', dot: colors.primary };
+        return { gradient: gradients.primary, icon: 'walk' as const };
     }
   }
 
@@ -83,12 +88,17 @@ export default function InsightsScreen() {
         </View>
       ) : (
         events.map((event, index) => {
-          const style = getEventStyle(event.type);
+          const style = getEventStyle(event.type, event.message);
           return (
             <View key={index} style={styles.eventCard}>
-              <View style={[styles.iconCircle, { backgroundColor: style.bg }]}>
-                <View style={[styles.dot, { backgroundColor: style.dot }]} />
-              </View>
+              <LinearGradient
+                colors={style.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.iconCircle}
+              >
+                <Ionicons name={style.icon} size={18} color="#fff" />
+              </LinearGradient>
               <View style={styles.eventContent}>
                 <Text style={styles.eventMessage}>{event.message}</Text>
                 <Text style={styles.eventTime}>{formatDate(event.timestamp)}</Text>
@@ -135,11 +145,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    ...shadow.card,
   },
   iconCircle: {
     width: 40,

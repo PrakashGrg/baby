@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { connectMonitorSocket } from '../api/websocket';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 const FRAME_INTERVAL_MS = 1500;
@@ -22,10 +24,16 @@ interface AlertItem {
   time: string;
 }
 
+interface SensorData {
+  temperature: number;
+  humidity: number;
+}
+
 export default function LiveScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [sensorData, setSensorData] = useState<SensorData | null>(null);
   const cameraRef = useRef<CameraView | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -51,6 +59,8 @@ export default function LiveScreen() {
             addAlert('motion', 'Motion detected in the room');
           } else if (data.type === 'cry_alert') {
             addAlert('cry', 'Crying detected');
+          } else if (data.type === 'sensor_update') {
+            setSensorData({ temperature: data.temperature, humidity: data.humidity });
           }
         };
 
@@ -128,9 +138,14 @@ export default function LiveScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <View style={styles.permissionIconCircle}>
-          <Text style={styles.permissionIcon}>CAM</Text>
-        </View>
+        <LinearGradient
+          colors={gradients.primary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.permissionIconCircle}
+        >
+          <Ionicons name="videocam" size={30} color="#fff" />
+        </LinearGradient>
         <Text style={styles.permissionTitle}>Camera Access Needed</Text>
         <Text style={styles.permissionText}>
           Baby Care needs your camera to watch over your baby and detect motion in real time.
@@ -165,6 +180,17 @@ export default function LiveScreen() {
           </View>
         </View>
 
+        {sensorData && (
+          <View style={styles.sensorOverlay} pointerEvents="none">
+            <View style={styles.sensorPill}>
+              <Text style={styles.sensorText}>{sensorData.temperature}°C</Text>
+            </View>
+            <View style={styles.sensorPill}>
+              <Text style={styles.sensorText}>{sensorData.humidity}% humidity</Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.bottomFade} pointerEvents="none" />
       </View>
 
@@ -187,25 +213,26 @@ export default function LiveScreen() {
             </View>
           ) : (
             alerts.map((alert) => (
+              alerts.map((alert) => (
               <View key={alert.id} style={styles.alertCard}>
-                <View
-                  style={[
-                    styles.alertIconCircle,
-                    { backgroundColor: alert.type === 'cry' ? '#FDECEC' : '#E9F0FE' },
-                  ]}
+                <LinearGradient
+                  colors={alert.type === 'cry' ? gradients.coral : gradients.primary}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.alertIconCircle}
                 >
-                  <View
-                    style={[
-                      styles.alertDot,
-                      { backgroundColor: alert.type === 'cry' ? colors.danger : colors.primary },
-                    ]}
+                  <Ionicons
+                    name={alert.type === 'cry' ? 'volume-high' : 'walk'}
+                    size={18}
+                    color="#fff"
                   />
-                </View>
+                </LinearGradient>
                 <View style={styles.alertContent}>
                   <Text style={styles.alertMessage}>{alert.message}</Text>
                   <Text style={styles.alertTime}>{alert.time}</Text>
                 </View>
               </View>
+            ))
             ))
           )}
         </ScrollView>
@@ -277,6 +304,27 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
     zIndex: 9,
     elevation: 9,
+  },
+  sensorOverlay: {
+    position: 'absolute',
+    bottom: spacing.md,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 10,
+    elevation: 10,
+  },
+  sensorPill: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  sensorText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   alertsSection: {
     flex: 1,
@@ -382,15 +430,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadow.card,
   },
   permissionIcon: {
     fontSize: 12,

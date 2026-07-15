@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = 'http://192.168.18.254:8000/api';
+const BASE_URL = 'https://baby-care-8ewi.onrender.com/api';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

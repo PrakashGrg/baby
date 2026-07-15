@@ -5,12 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
-  TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { activityAPI, sleepAPI } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 
@@ -40,9 +41,11 @@ export default function HomeScreen() {
     }
   }
 
-  useFocusEffect(
+    useFocusEffect(
     useCallback(() => {
       loadData();
+      const interval = setInterval(loadData, 10000);
+      return () => clearInterval(interval);
     }, [])
   );
 
@@ -52,62 +55,114 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
+  const isAsleep = sleepState === 'asleep';
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.greeting}>Hello, {user?.username}</Text>
-      <Text style={styles.subtitle}>Here's how your baby is doing right now.</Text>
-
-      <View style={styles.heroCard}>
-        <Text style={styles.heroLabel}>Baby Status</Text>
-        <Text style={styles.heroStatus}>
-          {sleepState === 'asleep' ? 'Sleeping' : sleepState === 'awake' ? 'Awake' : 'Unknown'}
-        </Text>
-        <Text style={styles.heroSub}>Room: {ROOM_NAME}</Text>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.greeting}>Hello, {user?.username}</Text>
+          <Text style={styles.subtitle}>Here's how your baby is doing</Text>
+        </View>
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarText}>{user?.username?.charAt(0).toUpperCase() ?? '?'}</Text>
+        </View>
       </View>
 
+      <LinearGradient
+        colors={isAsleep ? gradients.night : gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <View style={styles.heroTop}>
+          <Text style={styles.heroLabel}>BABY STATUS</Text>
+          <View style={styles.roomChip}>
+            <Ionicons name="location-outline" size={12} color="#fff" />
+            <Text style={styles.roomChipText}>{ROOM_NAME}</Text>
+          </View>
+        </View>
+
+        <View style={styles.heroMain}>
+          <Ionicons
+            name={isAsleep ? 'moon' : 'sunny'}
+            size={40}
+            color="#fff"
+            style={styles.heroIcon}
+          />
+          <Text style={styles.heroStatus}>
+            {isAsleep ? 'Sleeping' : sleepState === 'awake' ? 'Awake' : 'Unknown'}
+          </Text>
+        </View>
+        <Text style={styles.heroSub}>
+          {isAsleep ? 'Resting peacefully right now' : 'Active and alert right now'}
+        </Text>
+      </LinearGradient>
+
       <View style={styles.grid}>
-        <StatusCard
+        <StatCard
+          icon="walk-outline"
           label="Motion Events"
           value={summary ? summary.motion_event_count.toString() : '-'}
-          color={colors.primary}
+          gradientColors={gradients.primary}
         />
-        <StatusCard
+        <StatCard
+          icon="volume-high-outline"
           label="Cry Events"
           value={summary ? summary.cry_event_count.toString() : '-'}
-          color={colors.danger}
+          gradientColors={gradients.coral}
         />
-        <StatusCard
+        <StatCard
+          icon="thermometer-outline"
           label="Temperature"
           value={
             summary?.average_temperature_celsius != null
-              ? `${summary.average_temperature_celsius} C`
+              ? `${summary.average_temperature_celsius}°C`
               : '-'
           }
-          color={colors.warning}
+          gradientColors={gradients.sunrise}
         />
-        <StatusCard
+        <StatCard
+          icon="water-outline"
           label="Humidity"
           value={
             summary?.average_humidity_percent != null
               ? `${summary.average_humidity_percent}%`
               : '-'
           }
-          color={colors.secondary}
+          gradientColors={gradients.mint}
         />
       </View>
-
     </ScrollView>
   );
 }
 
-function StatusCard({ label, value, color }: { label: string; value: string; color: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  gradientColors,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  gradientColors: readonly [string, string, ...string[]];
+}) {
   return (
     <View style={styles.statusCard}>
-      <View style={[styles.statusDot, { backgroundColor: color }]} />
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.statusIconCircle}
+      >
+        <Ionicons name={icon} size={20} color="#fff" />
+      </LinearGradient>
       <Text style={styles.statusValue}>{value}</Text>
       <Text style={styles.statusLabel}>{label}</Text>
     </View>
@@ -123,6 +178,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.xl,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
   greeting: {
     ...typography.h1,
     color: colors.text,
@@ -130,27 +191,68 @@ const styles = StyleSheet.create({
   subtitle: {
     ...typography.body,
     color: colors.textMuted,
-    marginTop: spacing.xs,
-    marginBottom: spacing.lg,
+    marginTop: 2,
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
   },
   heroCard: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.xl,
+    borderRadius: radius.xxl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+    ...shadow.soft,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   heroLabel: {
     ...typography.caption,
-    color: '#E0E7FF',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 1,
+    fontWeight: '600',
+  },
+  roomChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  roomChipText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  heroMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  heroIcon: {
+    marginRight: spacing.sm,
   },
   heroStatus: {
     ...typography.h1,
+    fontSize: 34,
     color: '#fff',
-    marginTop: spacing.xs,
   },
   heroSub: {
-    ...typography.caption,
-    color: '#E0E7FF',
+    ...typography.body,
+    color: 'rgba(255,255,255,0.85)',
     marginTop: spacing.xs,
   },
   grid: {
@@ -164,16 +266,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadow.card,
   },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  statusIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   statusValue: {
@@ -184,14 +284,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
-  },
-  logoutButton: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  logoutText: {
-    color: colors.danger,
-    fontWeight: '600',
   },
 });

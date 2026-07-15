@@ -8,10 +8,13 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors, radius, spacing, typography } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
 
 interface SettingsRow {
   label: string;
+  icon: keyof typeof Ionicons.glyphMap;
   onPress?: () => void;
 }
 
@@ -30,20 +33,20 @@ export default function SettingsScreen() {
   }
 
   const accountRows: SettingsRow[] = [
-    { label: 'Baby Profile', onPress: () => comingSoon('Baby Profile') },
-    { label: 'Devices', onPress: () => comingSoon('Devices') },
-    { label: 'Notifications', onPress: () => comingSoon('Notifications') },
+    { label: 'Baby Profile', icon: 'happy-outline', onPress: () => comingSoon('Baby Profile') },
+    { label: 'Devices', icon: 'hardware-chip-outline', onPress: () => comingSoon('Devices') },
+    { label: 'Notifications', icon: 'notifications-outline', onPress: () => comingSoon('Notifications') },
   ];
 
   const preferenceRows: SettingsRow[] = [
-    { label: 'Privacy', onPress: () => comingSoon('Privacy') },
-    { label: 'Dark Mode', onPress: () => comingSoon('Dark Mode') },
-    { label: 'Language', onPress: () => comingSoon('Language') },
+    { label: 'Privacy', icon: 'lock-closed-outline', onPress: () => comingSoon('Privacy') },
+    { label: 'Dark Mode', icon: 'moon-outline', onPress: () => comingSoon('Dark Mode') },
+    { label: 'Language', icon: 'language-outline', onPress: () => comingSoon('Language') },
   ];
 
   const supportRows: SettingsRow[] = [
-    { label: 'Help & Support', onPress: () => comingSoon('Help & Support') },
-    { label: 'About Baby Care', onPress: () => comingSoon('About Baby Care') },
+    { label: 'Help & Support', icon: 'help-circle-outline', onPress: () => comingSoon('Help & Support') },
+    { label: 'About Baby Care', icon: 'information-circle-outline', onPress: () => comingSoon('About Baby Care') },
   ];
 
   return (
@@ -51,11 +54,11 @@ export default function SettingsScreen() {
       <Text style={styles.title}>Settings</Text>
 
       <View style={styles.profileCard}>
-        <View style={styles.avatarCircle}>
+        <LinearGradient colors={gradients.primary} style={styles.avatarCircle}>
           <Text style={styles.avatarText}>
             {user?.username?.charAt(0).toUpperCase() ?? '?'}
           </Text>
-        </View>
+        </LinearGradient>
         <View style={styles.profileInfo}>
           <Text style={styles.profileName}>{user?.username}</Text>
           <Text style={styles.profileMeta}>
@@ -92,8 +95,11 @@ function SettingsSection({ title, rows }: { title: string; rows: SettingsRow[] }
             ]}
             onPress={row.onPress}
           >
-            <Text style={styles.rowLabel}>{row.label}</Text>
-            <Text style={styles.rowChevron}>{'>'}</Text>
+            <View style={styles.rowLeft}>
+              <Ionicons name={row.icon} size={20} color={colors.primary} style={styles.rowIcon} />
+              <Text style={styles.rowLabel}>{row.label}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         ))}
       </View>
@@ -194,13 +200,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowIcon: {
+    marginRight: spacing.sm,
+  },
   rowLabel: {
     ...typography.body,
     color: colors.text,
-  },
-  rowChevron: {
-    color: colors.textMuted,
-    fontSize: 18,
   },
   logoutButton: {
     backgroundColor: colors.card,

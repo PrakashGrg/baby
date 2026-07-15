@@ -11,7 +11,9 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors, radius, spacing, typography } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
 
 export default function RegisterScreen({ navigation }: any) {
   const [username, setUsername] = useState('');
@@ -54,6 +56,9 @@ export default function RegisterScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.content}>
+        <LinearGradient colors={gradients.hero} style={styles.logoBadge}>
+          <Ionicons name="person-add" size={26} color="#fff" />
+        </LinearGradient>
         <Text style={styles.logo}>Baby Care</Text>
         <Text style={styles.subtitle}>Create an account to start monitoring your baby.</Text>
 
@@ -88,16 +93,14 @@ export default function RegisterScreen({ navigation }: any) {
             placeholderTextColor={colors.textMuted}
           />
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign Up</Text>
-            )}
+          <TouchableOpacity onPress={handleRegister} disabled={loading} activeOpacity={0.85}>
+            <LinearGradient colors={gradients.primary} style={styles.button}>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Sign Up</Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -120,6 +123,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+  },
+  logoBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    ...shadow.soft,
   },
   logo: {
     ...typography.h1,
@@ -160,7 +173,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   button: {
-    backgroundColor: colors.primary,
     borderRadius: radius.sm,
     paddingVertical: spacing.sm + 6,
     alignItems: 'center',

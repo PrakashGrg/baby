@@ -7,8 +7,10 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { sleepAPI } from '../api/client';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 
@@ -87,18 +89,36 @@ export default function SleepScreen() {
       <Text style={styles.title}>Sleep Tracking</Text>
       <Text style={styles.subtitle}>Room: {ROOM_NAME}</Text>
 
-      <View style={styles.heroCard}>
-        <Text style={styles.heroLabel}>Current Status</Text>
+      <LinearGradient
+        colors={currentState === 'asleep' ? gradients.night : gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <Ionicons
+          name={currentState === 'asleep' ? 'moon' : 'sunny'}
+          size={32}
+          color="#fff"
+          style={{ marginBottom: spacing.xs }}
+        />
+        <Text style={styles.heroLabel}>CURRENT STATUS</Text>
         <Text style={styles.heroStatus}>
           {currentState === 'asleep' ? 'Sleeping' : currentState === 'awake' ? 'Awake' : 'Unknown'}
         </Text>
-      </View>
+      </LinearGradient>
 
       <View style={styles.statCard}>
-        <Text style={styles.statLabel}>Sleep today</Text>
-        <Text style={styles.statValue}>
-          {hours}h {minutes}m
-        </Text>
+        <View style={styles.statCardRow}>
+          <LinearGradient colors={gradients.lavender} style={styles.statIconCircle}>
+            <Ionicons name="time-outline" size={20} color="#fff" />
+          </LinearGradient>
+          <View>
+            <Text style={styles.statLabel}>Sleep today</Text>
+            <Text style={styles.statValue}>
+              {hours}h {minutes}m
+            </Text>
+          </View>
+        </View>
       </View>
 
       <Text style={styles.sectionTitle}>Timeline</Text>
@@ -110,12 +130,16 @@ export default function SleepScreen() {
       ) : (
         history.map((log) => (
           <View key={log.id} style={styles.timelineItem}>
-            <View
-              style={[
-                styles.timelineDot,
-                { backgroundColor: log.state === 'asleep' ? colors.primary : colors.warning },
-              ]}
-            />
+            <LinearGradient
+              colors={log.state === 'asleep' ? gradients.primary : gradients.sunrise}
+              style={styles.timelineIconCircle}
+            >
+              <Ionicons
+                name={log.state === 'asleep' ? 'moon' : 'sunny'}
+                size={16}
+                color="#fff"
+              />
+            </LinearGradient>
             <View style={styles.timelineContent}>
               <Text style={styles.timelineState}>
                 {log.state === 'asleep' ? 'Fell asleep' : 'Woke up'}
@@ -154,10 +178,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   heroCard: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.xl,
+    borderRadius: radius.xxl,
     padding: spacing.lg,
     marginBottom: spacing.md,
+    ...shadow.soft,
   },
   heroLabel: {
     ...typography.caption,
@@ -168,16 +192,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: spacing.xs,
   },
-  statCard: {
+  sstatCard: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadow.card,
+  },
+  statCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
   },
   statLabel: {
     ...typography.caption,
@@ -209,10 +241,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  timelineIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: spacing.md,
   },
   timelineContent: {
