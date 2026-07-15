@@ -60,14 +60,19 @@ export default function LoginScreen({ navigation }: any) {
           />
 
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Enter your password"
-            placeholderTextColor={colors.textMuted}
-          />
+          <View style={styles.passwordRow}>
+            <TextInput
+              style={styles.passwordInput}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              placeholder="Enter your password"
+              placeholderTextColor={colors.textMuted}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
             <LinearGradient colors={gradients.primary} style={styles.button}>
@@ -168,4 +173,20 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 4,
+    fontSize: 16,
+    color: colors.text,
+  },
+  eyeButton: { paddingHorizontal: spacing.md },
 });
