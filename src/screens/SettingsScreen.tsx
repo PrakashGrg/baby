@@ -18,7 +18,7 @@ interface SettingsRow {
   onPress?: () => void;
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }: any) {
   const { user, logout } = useAuth();
 
   function confirmLogout() {
@@ -36,6 +36,7 @@ export default function SettingsScreen() {
     { label: 'Baby Profile', icon: 'happy-outline', onPress: () => comingSoon('Baby Profile') },
     { label: 'Devices', icon: 'hardware-chip-outline', onPress: () => comingSoon('Devices') },
     { label: 'Notifications', icon: 'notifications-outline', onPress: () => comingSoon('Notifications') },
+    { label: 'Switch to Child Device Mode', icon: 'videocam-outline', onPress: () => navigation.navigate('ChildMode') },
   ];
 
   const preferenceRows: SettingsRow[] = [
