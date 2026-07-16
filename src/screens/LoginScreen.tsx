@@ -18,6 +18,7 @@ import { colors, gradients, radius, spacing, typography, shadow } from '../theme
 export default function LoginScreen({ navigation }: any) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
