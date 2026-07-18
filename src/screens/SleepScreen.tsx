@@ -10,7 +10,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { sleepAPI } from '../api/client';
-import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 
@@ -22,10 +23,11 @@ interface SleepLogEntry {
 }
 
 export default function SleepScreen() {
+  const { colors } = useTheme();
   const [currentState, setCurrentState] = useState<string>('unknown');
   const [history, setHistory] = useState<SleepLogEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   async function loadData() {
     try {
       const [statusRes, historyRes] = await Promise.all([
@@ -66,8 +68,6 @@ export default function SleepScreen() {
       }
     }
 
-    // If the most recent transition today is "asleep" with no wake-up yet,
-    // count time from then until now as ongoing sleep
     if (todayLogs.length > 0 && todayLogs[todayLogs.length - 1].state === 'asleep') {
       const lastStart = new Date(todayLogs[todayLogs.length - 1].changed_at).getTime();
       totalMinutes += (Date.now() - lastStart) / 60000;
@@ -82,12 +82,12 @@ export default function SleepScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <Text style={styles.title}>Sleep Tracking</Text>
-      <Text style={styles.subtitle}>Room: {ROOM_NAME}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Sleep Tracking</Text>
+      <Text style={[styles.subtitle, { color: colors.textMuted }]}>Room: {ROOM_NAME}</Text>
 
       <LinearGradient
         colors={currentState === 'asleep' ? gradients.night : gradients.hero}
@@ -107,29 +107,29 @@ export default function SleepScreen() {
         </Text>
       </LinearGradient>
 
-      <View style={styles.statCard}>
+      <View style={[styles.statCard, { backgroundColor: colors.card }]}>
         <View style={styles.statCardRow}>
           <LinearGradient colors={gradients.lavender} style={styles.statIconCircle}>
             <Ionicons name="time-outline" size={20} color="#fff" />
           </LinearGradient>
           <View>
-            <Text style={styles.statLabel}>Sleep today</Text>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sleep today</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
               {hours}h {minutes}m
             </Text>
           </View>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Timeline</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Timeline</Text>
 
       {history.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No sleep transitions recorded yet today.</Text>
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>No sleep transitions recorded yet today.</Text>
         </View>
       ) : (
         history.map((log) => (
-          <View key={log.id} style={styles.timelineItem}>
+          <View key={log.id} style={[styles.timelineItem, { backgroundColor: colors.card }]}>
             <LinearGradient
               colors={log.state === 'asleep' ? gradients.primary : gradients.sunrise}
               style={styles.timelineIconCircle}
@@ -141,10 +141,10 @@ export default function SleepScreen() {
               />
             </LinearGradient>
             <View style={styles.timelineContent}>
-              <Text style={styles.timelineState}>
+              <Text style={[styles.timelineState, { color: colors.text }]}>
                 {log.state === 'asleep' ? 'Fell asleep' : 'Woke up'}
               </Text>
-              <Text style={styles.timelineTime}>
+              <Text style={[styles.timelineTime, { color: colors.textMuted }]}>
                 {new Date(log.changed_at).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -161,7 +161,6 @@ export default function SleepScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
@@ -169,11 +168,9 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h1,
-    color: colors.text,
   },
   subtitle: {
     ...typography.body,
-    color: colors.textMuted,
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
@@ -185,15 +182,14 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     ...typography.caption,
-    color: '#E0E7FF',
+    color: 'rgba(255,255,255,0.8)',
   },
   heroStatus: {
     ...typography.h1,
     color: '#fff',
     marginTop: spacing.xs,
   },
-  sstatCard: {
-    backgroundColor: colors.card,
+  statCard: {
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
@@ -213,16 +209,13 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     ...typography.caption,
-    color: colors.textMuted,
   },
   statValue: {
     ...typography.h1,
-    color: colors.text,
     marginTop: spacing.xs,
   },
   sectionTitle: {
     ...typography.h2,
-    color: colors.text,
     marginBottom: spacing.md,
   },
   emptyState: {
@@ -231,12 +224,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...typography.body,
-    color: colors.textMuted,
   },
   timelineItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -254,12 +245,10 @@ const styles = StyleSheet.create({
   },
   timelineState: {
     ...typography.body,
-    color: colors.text,
     fontWeight: '600',
   },
   timelineTime: {
     ...typography.caption,
-    color: colors.textMuted,
     marginTop: 2,
   },
 });

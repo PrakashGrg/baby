@@ -11,7 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { activityAPI, sleepAPI } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 
@@ -24,6 +25,7 @@ interface Summary {
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [sleepState, setSleepState] = useState<string>('unknown');
   const [refreshing, setRefreshing] = useState(false);
@@ -41,7 +43,7 @@ export default function HomeScreen() {
     }
   }
 
-    useFocusEffect(
+  useFocusEffect(
     useCallback(() => {
       loadData();
       const interval = setInterval(loadData, 10000);
@@ -59,17 +61,17 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.greeting}>Hello, {user?.username}</Text>
-          <Text style={styles.subtitle}>Here's how your baby is doing</Text>
+          <Text style={[styles.greeting, { color: colors.text }]}>Hello, {user?.username}</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Here's how your baby is doing</Text>
         </View>
-        <View style={styles.avatarCircle}>
+        <View style={[styles.avatarCircle, { backgroundColor: colors.primary }]}>
           <Text style={styles.avatarText}>{user?.username?.charAt(0).toUpperCase() ?? '?'}</Text>
         </View>
       </View>
@@ -110,12 +112,14 @@ export default function HomeScreen() {
           label="Motion Events"
           value={summary ? summary.motion_event_count.toString() : '-'}
           gradientColors={gradients.primary}
+          colors={colors}
         />
         <StatCard
           icon="volume-high-outline"
           label="Cry Events"
           value={summary ? summary.cry_event_count.toString() : '-'}
           gradientColors={gradients.coral}
+          colors={colors}
         />
         <StatCard
           icon="thermometer-outline"
@@ -126,6 +130,7 @@ export default function HomeScreen() {
               : '-'
           }
           gradientColors={gradients.sunrise}
+          colors={colors}
         />
         <StatCard
           icon="water-outline"
@@ -136,6 +141,7 @@ export default function HomeScreen() {
               : '-'
           }
           gradientColors={gradients.mint}
+          colors={colors}
         />
       </View>
     </ScrollView>
@@ -147,14 +153,16 @@ function StatCard({
   label,
   value,
   gradientColors,
+  colors,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
   gradientColors: readonly [string, string, ...string[]];
+  colors: any;
 }) {
   return (
-    <View style={styles.statusCard}>
+    <View style={[styles.statusCard, { backgroundColor: colors.card }]}>
       <LinearGradient
         colors={gradientColors}
         start={{ x: 0, y: 0 }}
@@ -163,8 +171,8 @@ function StatCard({
       >
         <Ionicons name={icon} size={20} color="#fff" />
       </LinearGradient>
-      <Text style={styles.statusValue}>{value}</Text>
-      <Text style={styles.statusLabel}>{label}</Text>
+      <Text style={[styles.statusValue, { color: colors.text }]}>{value}</Text>
+      <Text style={[styles.statusLabel, { color: colors.textMuted }]}>{label}</Text>
     </View>
   );
 }
@@ -172,7 +180,6 @@ function StatCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
@@ -186,18 +193,15 @@ const styles = StyleSheet.create({
   },
   greeting: {
     ...typography.h1,
-    color: colors.text,
   },
   subtitle: {
     ...typography.body,
-    color: colors.textMuted,
     marginTop: 2,
   },
   avatarCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -262,7 +266,6 @@ const styles = StyleSheet.create({
   },
   statusCard: {
     width: '48%',
-    backgroundColor: colors.card,
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -278,11 +281,9 @@ const styles = StyleSheet.create({
   },
   statusValue: {
     ...typography.h2,
-    color: colors.text,
   },
   statusLabel: {
     ...typography.caption,
-    color: colors.textMuted,
     marginTop: spacing.xs,
   },
 });

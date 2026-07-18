@@ -10,7 +10,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { activityAPI } from '../api/client';
-import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 
@@ -22,6 +23,7 @@ interface TimelineEvent {
 }
 
 export default function InsightsScreen() {
+  const { colors } = useTheme();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -75,22 +77,22 @@ export default function InsightsScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <Text style={styles.title}>Insights</Text>
-      <Text style={styles.subtitle}>A timeline of everything happening with your baby.</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Insights</Text>
+      <Text style={[styles.subtitle, { color: colors.textMuted }]}>A timeline of everything happening with your baby.</Text>
 
       {events.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No events recorded yet.</Text>
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>No events recorded yet.</Text>
         </View>
       ) : (
         events.map((event, index) => {
           const style = getEventStyle(event.type, event.message);
           return (
-            <View key={index} style={styles.eventCard}>
+            <View key={index} style={[styles.eventCard, { backgroundColor: colors.card }]}>
               <LinearGradient
                 colors={style.gradient}
                 start={{ x: 0, y: 0 }}
@@ -100,8 +102,8 @@ export default function InsightsScreen() {
                 <Ionicons name={style.icon} size={18} color="#fff" />
               </LinearGradient>
               <View style={styles.eventContent}>
-                <Text style={styles.eventMessage}>{event.message}</Text>
-                <Text style={styles.eventTime}>{formatDate(event.timestamp)}</Text>
+                <Text style={[styles.eventMessage, { color: colors.text }]}>{event.message}</Text>
+                <Text style={[styles.eventTime, { color: colors.textMuted }]}>{formatDate(event.timestamp)}</Text>
               </View>
             </View>
           );
@@ -114,7 +116,6 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
@@ -122,11 +123,9 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h1,
-    color: colors.text,
   },
   subtitle: {
     ...typography.body,
-    color: colors.textMuted,
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
@@ -136,11 +135,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...typography.body,
-    color: colors.textMuted,
   },
   eventCard: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -155,22 +152,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
   eventContent: {
     flex: 1,
   },
   eventMessage: {
     ...typography.body,
-    color: colors.text,
     fontWeight: '500',
   },
   eventTime: {
     ...typography.caption,
-    color: colors.textMuted,
     marginTop: 2,
   },
 });

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { authAPI } from '../api/client';
+import { registerForPushNotifications } from '../utils/notifications';
+
 
 interface User {
   id: number;
@@ -34,6 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token) {
         const response = await authAPI.me();
         setUser(response.data);
+        registerForPushNotifications().catch((error) => {
+          console.log('Push registration failed', error);
+        });
       }
     } catch (error) {
       // Token invalid/expired — clear it
@@ -51,6 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const meResponse = await authAPI.me();
     setUser(meResponse.data);
+
+    registerForPushNotifications().catch((error) => {
+      console.log('Push registration failed', error);
+    });
   }
 
   async function register(username: string, password: string, email?: string) {

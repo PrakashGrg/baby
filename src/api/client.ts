@@ -78,3 +78,17 @@ export const sensorsAPI = {
   history: (roomName: string = 'room1') =>
     apiClient.get(`/sensors/history/?room_name=${roomName}`),
 };
+
+
+export const babyAPI = {
+  list: () => apiClient.get('/baby/'),
+  create: (data: { name: string; birthday?: string; weight_kg?: number; height_cm?: number; sleep_goal_hours?: number }) =>
+    apiClient.post('/baby/', data),
+  update: (id: number, data: Partial<{ name: string; birthday: string; weight_kg: number; height_cm: number; sleep_goal_hours: number }>) =>
+    apiClient.patch(`/baby/${id}/`, data),
+  delete: (id: number) => apiClient.delete(`/baby/${id}/`),
+};
+
+export const pushAPI = {
+  registerToken: (token: string) => apiClient.post('/auth/push-token/', { token }),
+};

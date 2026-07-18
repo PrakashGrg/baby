@@ -5,12 +5,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { connectMonitorSocket } from '../api/websocket';
-import { colors, gradients, radius, spacing, typography } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 const FRAME_INTERVAL_MS = 1500;
 
 export default function ChildModeScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
   const [facing, setFacing] = useState<'front' | 'back'>('front');
@@ -77,15 +79,15 @@ export default function ChildModeScreen({ navigation }: any) {
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
+      <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
         <LinearGradient colors={gradients.hero} style={styles.permissionIcon}>
           <Ionicons name="videocam" size={30} color="#fff" />
         </LinearGradient>
-        <Text style={styles.permissionTitle}>Camera Access Needed</Text>
-        <Text style={styles.permissionText}>
+        <Text style={[styles.permissionTitle, { color: colors.text }]}>Camera Access Needed</Text>
+        <Text style={[styles.permissionText, { color: colors.textMuted }]}>
           Child Mode needs the camera and microphone to watch over your baby.
         </Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+        <TouchableOpacity style={[styles.permissionButton, { backgroundColor: colors.primary }]} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Access</Text>
         </TouchableOpacity>
       </View>
@@ -171,7 +173,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
     padding: spacing.xl,
   },
   permissionIcon: {
@@ -182,10 +183,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.lg,
   },
-  permissionTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm, textAlign: 'center' },
-  permissionText: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.xl },
+  permissionTitle: { ...typography.h2, marginBottom: spacing.sm, textAlign: 'center' },
+  permissionText: { ...typography.body, textAlign: 'center', marginBottom: spacing.xl },
   permissionButton: {
-    backgroundColor: colors.primary,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm + 6,

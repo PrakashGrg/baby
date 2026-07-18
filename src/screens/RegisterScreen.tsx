@@ -13,10 +13,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api/client';
-import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 export default function RegisterScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +25,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { register } = useAuth();
 
   async function handleRegister() {
     if (!username || !password || !confirmPassword) {
@@ -46,8 +47,7 @@ export default function RegisterScreen({ navigation }: any) {
 
     setLoading(true);
     try {
-      await authAPI.register(username, password, email);
-      await login(username, password);
+      await register(username, password, email);
     } catch (error: any) {
       const data = error?.response?.data;
       const message =
@@ -65,20 +65,20 @@ export default function RegisterScreen({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.content}>
         <LinearGradient colors={gradients.hero} style={styles.logoBadge}>
           <Ionicons name="person-add" size={26} color="#fff" />
         </LinearGradient>
-        <Text style={styles.logo}>Baby Care</Text>
-        <Text style={styles.subtitle}>Create an account to start monitoring your baby.</Text>
+        <Text style={[styles.logo, { color: colors.primary }]}>Baby Care</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Create an account to start monitoring your baby.</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Username</Text>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Username</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -86,9 +86,9 @@ export default function RegisterScreen({ navigation }: any) {
             placeholderTextColor={colors.textMuted}
           />
 
-          <Text style={styles.label}>Email (optional)</Text>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Email (optional)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -97,10 +97,10 @@ export default function RegisterScreen({ navigation }: any) {
             placeholderTextColor={colors.textMuted}
           />
 
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordRow}>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Password</Text>
+          <View style={[styles.passwordRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.text }]}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -112,10 +112,10 @@ export default function RegisterScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.passwordRow}>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Confirm Password</Text>
+          <View style={[styles.passwordRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.text }]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
@@ -139,8 +139,8 @@ export default function RegisterScreen({ navigation }: any) {
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.link}>
-            Already have an account? <Text style={styles.linkBold}>Log in</Text>
+          <Text style={[styles.link, { color: colors.textMuted }]}>
+            Already have an account? <Text style={[styles.linkBold, { color: colors.primary }]}>Log in</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -149,7 +149,7 @@ export default function RegisterScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.lg },
   logoBadge: {
     width: 64,
@@ -161,34 +161,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow.soft,
   },
-  logo: { ...typography.h1, color: colors.primary, textAlign: 'center', marginBottom: spacing.xs },
-  subtitle: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.xl },
-  card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, ...shadow.soft },
-  label: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.xs, marginTop: spacing.sm },
+  logo: { ...typography.h1, textAlign: 'center', marginBottom: spacing.xs },
+  subtitle: { ...typography.body, textAlign: 'center', marginBottom: spacing.xl },
+  card: { borderRadius: radius.lg, padding: spacing.lg, ...shadow.soft },
+  label: { ...typography.caption, marginBottom: spacing.xs, marginTop: spacing.sm },
   input: {
-    backgroundColor: colors.background,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 4,
     fontSize: 16,
-    color: colors.text,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 4,
     fontSize: 16,
-    color: colors.text,
   },
   eyeButton: { paddingHorizontal: spacing.md },
   button: {
@@ -198,6 +192,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', marginTop: spacing.lg, color: colors.textMuted },
-  linkBold: { color: colors.primary, fontWeight: '600' },
+  link: { textAlign: 'center', marginTop: spacing.lg },
+  linkBold: { fontWeight: '600' },
 });

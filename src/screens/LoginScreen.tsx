@@ -10,12 +10,14 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 export default function LoginScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,20 +41,20 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.content}>
         <LinearGradient colors={gradients.hero} style={styles.logoBadge}>
           <Ionicons name="heart" size={28} color="#fff" />
         </LinearGradient>
-        <Text style={styles.logo}>Baby Care</Text>
-        <Text style={styles.subtitle}>Welcome back - your baby's safety, always in view.</Text>
+        <Text style={[styles.logo, { color: colors.primary }]}>Baby Care</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Welcome back - your baby's safety, always in view.</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Username</Text>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Username</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -60,10 +62,10 @@ export default function LoginScreen({ navigation }: any) {
             placeholderTextColor={colors.textMuted}
           />
 
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordRow}>
+          <Text style={[styles.label, { color: colors.textMuted }]}>Password</Text>
+          <View style={[styles.passwordRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: colors.text }]}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -87,8 +89,8 @@ export default function LoginScreen({ navigation }: any) {
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.link}>
-            Don't have an account? <Text style={styles.linkBold}>Sign up</Text>
+          <Text style={[styles.link, { color: colors.textMuted }]}>
+            Don't have an account? <Text style={[styles.linkBold, { color: colors.primary }]}>Sign up</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -99,7 +101,6 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -118,41 +119,45 @@ const styles = StyleSheet.create({
   },
   logo: {
     ...typography.h1,
-    color: colors.primary,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.body,
-    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
   card: {
-    backgroundColor: colors.card,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    ...shadow.soft,
   },
   label: {
     ...typography.caption,
-    color: colors.textMuted,
     marginBottom: spacing.xs,
     marginTop: spacing.sm,
   },
   input: {
-    backgroundColor: colors.background,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 4,
     fontSize: 16,
-    color: colors.text,
     borderWidth: 1,
-    borderColor: colors.border,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 4,
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingHorizontal: spacing.md,
   },
   button: {
     borderRadius: radius.sm,
@@ -168,26 +173,8 @@ const styles = StyleSheet.create({
   link: {
     textAlign: 'center',
     marginTop: spacing.lg,
-    color: colors.textMuted,
   },
   linkBold: {
-    color: colors.primary,
     fontWeight: '600',
   },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    fontSize: 16,
-    color: colors.text,
-  },
-  eyeButton: { paddingHorizontal: spacing.md },
 });

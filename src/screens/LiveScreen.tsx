@@ -12,7 +12,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { connectMonitorSocket } from '../api/websocket';
-import { colors, gradients, radius, spacing, typography, shadow } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { gradients, radius, spacing, typography, shadow } from '../theme';
 
 const ROOM_NAME = 'room1';
 const FRAME_INTERVAL_MS = 1500;
@@ -30,6 +31,7 @@ interface SensorData {
 }
 
 export default function LiveScreen() {
+  const { colors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -50,7 +52,6 @@ export default function LiveScreen() {
         socket.onopen = () => {
           if (isActive) setConnected(true);
           startFrameCapture();
-          startPulse();
         };
 
         socket.onmessage = (event) => {
@@ -85,15 +86,6 @@ export default function LiveScreen() {
     }, [])
   );
 
-  function startPulse() {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.4, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])
-    ).start();
-  }
-
   function addAlert(type: string, message: string) {
     const newAlert: AlertItem = {
       id: Date.now().toString(),
@@ -105,6 +97,13 @@ export default function LiveScreen() {
   }
 
   function startFrameCapture() {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.4, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+
     intervalRef.current = setInterval(async () => {
       if (!cameraRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
       try {
@@ -132,25 +131,20 @@ export default function LiveScreen() {
   }
 
   if (!permission) {
-    return <View style={styles.container} />;
+    return <View style={[styles.container, { backgroundColor: colors.background }]} />;
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <LinearGradient
-          colors={gradients.primary}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.permissionIconCircle}
-        >
+      <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
+        <LinearGradient colors={gradients.primary} style={styles.permissionIconCircle}>
           <Ionicons name="videocam" size={30} color="#fff" />
         </LinearGradient>
-        <Text style={styles.permissionTitle}>Camera Access Needed</Text>
-        <Text style={styles.permissionText}>
+        <Text style={[styles.permissionTitle, { color: colors.text }]}>Camera Access Needed</Text>
+        <Text style={[styles.permissionText, { color: colors.textMuted }]}>
           Baby Care needs your camera to watch over your baby and detect motion in real time.
         </Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+        <TouchableOpacity style={[styles.permissionButton, { backgroundColor: colors.primary }]} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Camera Access</Text>
         </TouchableOpacity>
       </View>
@@ -158,7 +152,7 @@ export default function LiveScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.cameraContainer}>
         <CameraView ref={cameraRef} style={styles.camera} facing="back" />
 
@@ -196,9 +190,9 @@ export default function LiveScreen() {
 
       <View style={styles.alertsSection}>
         <View style={styles.alertsHeader}>
-          <Text style={styles.alertsTitle}>Recent Alerts</Text>
+          <Text style={[styles.alertsTitle, { color: colors.text }]}>Recent Alerts</Text>
           {alerts.length > 0 && (
-            <View style={styles.alertsCountBadge}>
+            <View style={[styles.alertsCountBadge, { backgroundColor: colors.primary }]}>
               <Text style={styles.alertsCountText}>{alerts.length}</Text>
             </View>
           )}
@@ -207,14 +201,13 @@ export default function LiveScreen() {
         <ScrollView style={styles.alertsList} showsVerticalScrollIndicator={false}>
           {alerts.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>ZZZ</Text>
-              <Text style={styles.emptyText}>All quiet right now</Text>
-              <Text style={styles.emptySubtext}>You'll see motion and cry alerts here as they happen.</Text>
+              <Text style={[styles.emptyEmoji, { color: colors.textMuted }]}>ZZZ</Text>
+              <Text style={[styles.emptyText, { color: colors.text }]}>All quiet right now</Text>
+              <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>You'll see motion and cry alerts here as they happen.</Text>
             </View>
           ) : (
             alerts.map((alert) => (
-              alerts.map((alert) => (
-              <View key={alert.id} style={styles.alertCard}>
+              <View key={alert.id} style={[styles.alertCard, { backgroundColor: colors.card }]}>
                 <LinearGradient
                   colors={alert.type === 'cry' ? gradients.coral : gradients.primary}
                   start={{ x: 0, y: 0 }}
@@ -228,11 +221,10 @@ export default function LiveScreen() {
                   />
                 </LinearGradient>
                 <View style={styles.alertContent}>
-                  <Text style={styles.alertMessage}>{alert.message}</Text>
-                  <Text style={styles.alertTime}>{alert.time}</Text>
+                  <Text style={[styles.alertMessage, { color: colors.text }]}>{alert.message}</Text>
+                  <Text style={[styles.alertTime, { color: colors.textMuted }]}>{alert.time}</Text>
                 </View>
               </View>
-            ))
             ))
           )}
         </ScrollView>
@@ -244,7 +236,6 @@ export default function LiveScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   cameraContainer: {
     height: '45%',
@@ -338,10 +329,8 @@ const styles = StyleSheet.create({
   },
   alertsTitle: {
     ...typography.h2,
-    color: colors.text,
   },
   alertsCountBadge: {
-    backgroundColor: colors.primary,
     borderRadius: radius.xl,
     minWidth: 22,
     height: 22,
@@ -365,33 +354,25 @@ const styles = StyleSheet.create({
   },
   emptyEmoji: {
     fontSize: 13,
-    color: colors.textMuted,
     letterSpacing: 2,
     marginBottom: spacing.sm,
   },
   emptyText: {
     ...typography.body,
-    color: colors.text,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
   emptySubtext: {
     ...typography.caption,
-    color: colors.textMuted,
     textAlign: 'center',
   },
   alertCard: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    ...shadow.card,
   },
   alertIconCircle: {
     width: 40,
@@ -401,29 +382,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  alertDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
   alertContent: {
     flex: 1,
   },
   alertMessage: {
     ...typography.body,
-    color: colors.text,
     fontWeight: '500',
   },
   alertTime: {
     ...typography.caption,
-    color: colors.textMuted,
     marginTop: 2,
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
     padding: spacing.xl,
   },
   permissionIconCircle: {
@@ -435,27 +408,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadow.card,
   },
-  permissionIcon: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    letterSpacing: 1,
-  },
   permissionTitle: {
     ...typography.h2,
-    color: colors.text,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   permissionText: {
     ...typography.body,
-    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: spacing.xl,
     lineHeight: 22,
   },
   permissionButton: {
-    backgroundColor: colors.primary,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm + 6,

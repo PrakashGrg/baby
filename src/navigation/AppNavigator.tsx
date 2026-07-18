@@ -7,6 +7,12 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import MainTabs from './MainTabs';
 import ChildModeScreen from '../screens/ChildModeScreen';
+import BabyProfileScreen from '../screens/BabyProfileScreen';
+import DevicesScreen from '../screens/DevicesScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
+import HelpScreen from '../screens/HelpScreen';
+import AboutScreen from '../screens/AboutScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -41,6 +47,11 @@ export default function AppNavigator() {
             component={ChildModeScreen}
             options={{ presentation: 'fullScreenModal' }}
           />
+          <Stack.Screen name="BabyProfile" component={BabyProfileScreen} />
+          <Stack.Screen name="Devices" component={DevicesScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} /><Stack.Screen name="Privacy" component={PrivacyScreen} />
+          <Stack.Screen name="Help" component={HelpScreen} />
+          <Stack.Screen name="About" component={AboutScreen} />
         </Stack.Navigator>
       ) : (
         <AuthStack />

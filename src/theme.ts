@@ -1,8 +1,8 @@
-export const colors = {
-  primary: '#5B8DEF',      // Soft Blue
+export const lightColors = {
+  primary: '#5B8DEF',
   primaryDark: '#3D6FD9',
-  secondary: '#8ED1C6',    // Mint Green
-  accent: '#B8A1FF',       // Lavender
+  secondary: '#8ED1C6',
+  accent: '#B8A1FF',
   success: '#5CB85C',
   warning: '#F4B400',
   danger: '#E57373',
@@ -11,6 +11,21 @@ export const colors = {
   text: '#1F2937',
   textMuted: '#6B7280',
   border: '#E5E7EB',
+};
+
+export const darkColors = {
+  primary: '#7BA5F5',
+  primaryDark: '#5B8DEF',
+  secondary: '#8ED1C6',
+  accent: '#C4B3FF',
+  success: '#6FCF6F',
+  warning: '#F5C244',
+  danger: '#EF8A8A',
+  background: '#0F1420',
+  card: '#1A2233',
+  text: '#F1F5F9',
+  textMuted: '#94A3B8',
+  border: '#2D3748',
 };
 
 export const gradients = {
@@ -64,3 +79,6 @@ export const shadow = {
     elevation: 2,
   },
 };
+
+// Backward-compatible default export (light mode) for any file not yet migrated
+export const colors = lightColors;
