@@ -83,12 +83,10 @@ export default function ChildModeScreen({ navigation }: any) {
         <LinearGradient colors={gradients.hero} style={styles.permissionIcon}>
           <Ionicons name="videocam" size={30} color="#fff" />
         </LinearGradient>
-        <Text style={[styles.permissionTitle, { color: colors.text }]}>Camera Access Needed</Text>
-        <Text style={[styles.permissionText, { color: colors.textMuted }]}>
-          Child Mode needs the camera and microphone to watch over your baby.
-        </Text>
+        <Text style={[styles.permissionTitle, { color: colors.text }]}>{t('cameraAccessNeeded')}</Text>
+        <Text style={[styles.permissionText, { color: colors.textMuted }]}>{t('cameraAccessMsg')}</Text>
         <TouchableOpacity style={[styles.permissionButton, { backgroundColor: colors.primary }]} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Access</Text>
+          <Text style={styles.permissionButtonText}>{t('grantAccess')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -114,7 +112,7 @@ export default function ChildModeScreen({ navigation }: any) {
           <Ionicons name="heart" size={28} color="#fff" />
         </Animated.View>
         <Text style={styles.watchingText}>
-          {connected ? 'Watching over your baby' : 'Connecting...'}
+          {connected ? 'Watching over your baby' : t('connecting')}
         </Text>
       </View>
     </View>

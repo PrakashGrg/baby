@@ -13,6 +13,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import HelpScreen from '../screens/HelpScreen';
 import AboutScreen from '../screens/AboutScreen';
+import LanguageScreen from '../screens/LanguageScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -52,6 +53,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Notifications" component={NotificationsScreen} /><Stack.Screen name="Privacy" component={PrivacyScreen} />
           <Stack.Screen name="Help" component={HelpScreen} />
           <Stack.Screen name="About" component={AboutScreen} />
+          <Stack.Screen name="Language" component={LanguageScreen} />
         </Stack.Navigator>
       ) : (
         <AuthStack />
