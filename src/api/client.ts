@@ -87,6 +87,7 @@ export const babyAPI = {
   update: (id: number, data: Partial<{ name: string; birthday: string; weight_kg: number; height_cm: number; sleep_goal_hours: number }>) =>
     apiClient.patch(`/baby/${id}/`, data),
   delete: (id: number) => apiClient.delete(`/baby/${id}/`),
+  joinByCode: (roomId: string) => apiClient.get(`/baby/join/${roomId}/`),
 };
 
 export const pushAPI = {

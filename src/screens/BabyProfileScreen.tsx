@@ -23,6 +23,7 @@ interface Baby {
   weight_kg: number | null;
   height_cm: number | null;
   sleep_goal_hours: number;
+  room_id: string;
 }
 
 export default function BabyProfileScreen({ navigation }: any) {
@@ -180,6 +181,10 @@ export default function BabyProfileScreen({ navigation }: any) {
                   {baby.height_cm ? `${baby.height_cm}cm  ` : ''}
                   Sleep goal: {baby.sleep_goal_hours}h
                 </Text>
+                <View style={styles.roomCodeRow}>
+                  <Ionicons name="key-outline" size={12} color={colors.primary} />
+                  <Text style={[styles.roomCodeText, { color: colors.primary }]}>{baby.room_id}</Text>
+                </View>
               </View>
               <TouchableOpacity onPress={() => handleDelete(baby.id)}>
                 <Ionicons name="trash-outline" size={20} color={colors.danger} />
@@ -248,4 +253,6 @@ const styles = StyleSheet.create({
   babyInfo: { flex: 1 },
   babyName: { ...typography.body, fontWeight: '600' },
   babyMeta: { ...typography.caption, marginTop: 2 },
+  roomCodeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  roomCodeText: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
 });

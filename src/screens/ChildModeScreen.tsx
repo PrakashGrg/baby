@@ -1,21 +1,25 @@
 import React, { useRef, useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { connectMonitorSocket } from '../api/websocket';
 import { useTheme } from '../context/ThemeContext';
+import { useRoom } from '../context/RoomContext';
 import { gradients, radius, spacing, typography, shadow } from '../theme';
 
-const ROOM_NAME = 'room1';
 const FRAME_INTERVAL_MS = 1500;
 
 export default function ChildModeScreen({ navigation }: any) {
   const { colors } = useTheme();
+  const { roomId } = useRoom();
   const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
   const [facing, setFacing] = useState<'front' | 'back'>('front');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const soundRef = useRef<Audio.Sound | null>(null);
   const cameraRef = useRef<CameraView | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -26,7 +30,7 @@ export default function ChildModeScreen({ navigation }: any) {
       let isActive = true;
 
       async function setup() {
-        const socket = await connectMonitorSocket(ROOM_NAME);
+        const socket = await connectMonitorSocket(roomId);
         wsRef.current = socket;
 
         socket.onopen = () => {
@@ -38,6 +42,12 @@ export default function ChildModeScreen({ navigation }: any) {
               Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
             ])
           ).start();
+        };
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === 'parent_voice' && data.audio) {
+            playParentVoice(data.audio);
+          }
         };
         socket.onclose = () => { if (isActive) setConnected(false); };
         socket.onerror = () => { if (isActive) setConnected(false); };
@@ -75,6 +85,30 @@ export default function ChildModeScreen({ navigation }: any) {
     }, FRAME_INTERVAL_MS);
   }
 
+  async function playParentVoice(base64Audio: string) {
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const uri = FileSystem.cacheDirectory + `voice_${Date.now()}.m4a`;
+      await FileSystem.writeAsStringAsync(uri, base64Audio, { encoding: FileSystem.EncodingType.Base64 });
+
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+      soundRef.current = sound;
+      setIsPlaying(true);
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setIsPlaying(false);
+        }
+      });
+    } catch (error) {
+      console.log('Failed to play parent voice', error);
+    }
+  }
+
   if (!permission) return <View style={styles.container} />;
 
   if (!permission.granted) {
@@ -100,6 +134,10 @@ export default function ChildModeScreen({ navigation }: any) {
         <Ionicons name="close" size={22} color="#fff" />
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.roomBadgeChild} onPress={() => navigation.navigate('RoomPicker')}>
+        <Text style={styles.roomBadgeChildText}>{roomId}</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
         style={styles.flipButton}
         onPress={() => setFacing((prev) => (prev === 'front' ? 'back' : 'front'))}
@@ -112,7 +150,7 @@ export default function ChildModeScreen({ navigation }: any) {
           <Ionicons name="heart" size={28} color="#fff" />
         </Animated.View>
         <Text style={styles.watchingText}>
-          {connected ? 'Watching over your baby' : t('connecting')}
+          {isPlaying ? 'Parent is speaking...' : connected ? 'Watching over your baby' : t('connecting')}
         </Text>
       </View>
     </View>
@@ -145,6 +183,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  roomBadgeChild: {
+    position: 'absolute',
+    top: spacing.xl,
+    left: '50%',
+    marginLeft: -40,
+    width: 80,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  roomBadgeChildText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   overlay: {
     position: 'absolute',

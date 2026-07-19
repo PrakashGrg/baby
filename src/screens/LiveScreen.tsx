@@ -1,22 +1,24 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { connectMonitorSocket } from '../api/websocket';
 import { useTheme } from '../context/ThemeContext';
+import { useRoom } from '../context/RoomContext';
 import { useLanguage } from '../context/LanguageContext';
 import { gradients, radius, spacing, typography, shadow } from '../theme';
 
-const ROOM_NAME = 'room1';
 const FRAME_INTERVAL_MS = 1500;
 
 interface AlertItem { id: string; type: string; message: string; time: string; }
 interface SensorData { temperature: number; humidity: number; }
 
-export default function LiveScreen() {
+export default function LiveScreen({ navigation }: any) {
   const { colors } = useTheme();
+  const { roomId } = useRoom();
   const { t } = useLanguage();
   const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
@@ -26,12 +28,15 @@ export default function LiveScreen() {
   const wsRef = useRef<WebSocket | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
       async function setup() {
-        const socket = await connectMonitorSocket(ROOM_NAME);
+        const socket = await connectMonitorSocket(roomId);
         wsRef.current = socket;
         socket.onopen = () => { if (isActive) setConnected(true); startFrameCapture(); };
         socket.onmessage = (event) => {
@@ -78,6 +83,49 @@ export default function LiveScreen() {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
   }
 
+  async function startTalking() {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') return;
+
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
+      setIsRecording(true);
+    } catch (error) {
+      console.log('Failed to start recording', error);
+    }
+  }
+
+  async function stopTalking() {
+    if (!recordingRef.current) return;
+    setIsRecording(false);
+    setIsSending(true);
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+
+      if (uri && wsRef.current?.readyState === WebSocket.OPEN) {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          wsRef.current?.send(JSON.stringify({ type: 'parent_voice', audio: base64Audio }));
+          setIsSending(false);
+        };
+        reader.readAsDataURL(blob);
+      } else {
+        setIsSending(false);
+      }
+    } catch (error) {
+      console.log('Failed to send recording', error);
+      setIsSending(false);
+    }
+  }
+
   if (!permission) return <View style={[styles.container, { backgroundColor: colors.background }]} />;
 
   if (!permission.granted) {
@@ -99,12 +147,15 @@ export default function LiveScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.cameraContainer}>
         <CameraView ref={cameraRef} style={styles.camera} facing="back" />
-        <View style={styles.topOverlay} pointerEvents="none">
+        <View style={styles.topOverlay}>
           <View style={styles.statusBadge}>
             <Animated.View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.danger, transform: [{ scale: connected ? pulseAnim : 1 }] }]} />
             <Text style={styles.statusText}>{connected ? t('live') : t('connecting')}</Text>
           </View>
-          <View style={styles.roomBadge}><Text style={styles.roomBadgeText}>{ROOM_NAME}</Text></View>
+          <TouchableOpacity style={styles.roomBadge} onPress={() => navigation.navigate('RoomPicker')}>
+            <Text style={styles.roomBadgeText}>{roomId}</Text>
+            <Ionicons name="chevron-down" size={12} color="#fff" style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
         </View>
         {sensorData && (
           <View style={styles.sensorOverlay} pointerEvents="none">
@@ -113,6 +164,18 @@ export default function LiveScreen() {
           </View>
         )}
         <View style={styles.bottomFade} pointerEvents="none" />
+
+        <TouchableOpacity
+          style={[styles.talkButton, { backgroundColor: isRecording ? colors.danger : colors.primary }]}
+          onPressIn={startTalking}
+          onPressOut={stopTalking}
+          disabled={isSending}
+        >
+          <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={24} color="#fff" />
+          <Text style={styles.talkButtonText}>
+            {isSending ? 'Sending...' : isRecording ? 'Release to Send' : 'Hold to Talk'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.alertsSection}>
@@ -158,6 +221,24 @@ const styles = StyleSheet.create({
   sensorOverlay: { position: 'absolute', bottom: spacing.md, left: spacing.md, right: spacing.md, flexDirection: 'row', justifyContent: 'space-between', zIndex: 10, elevation: 10 },
   sensorPill: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radius.xl, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2 },
   sensorText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  talkButton: {
+    position: 'absolute',
+    bottom: spacing.md,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.xl,
+    zIndex: 11,
+    elevation: 11,
+  },
+  talkButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: spacing.sm,
+    fontSize: 14,
+  },
   alertsSection: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   alertsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   alertsTitle: { ...typography.h2 },
