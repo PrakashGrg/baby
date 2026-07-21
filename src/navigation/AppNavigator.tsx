@@ -15,6 +15,7 @@ import HelpScreen from '../screens/HelpScreen';
 import AboutScreen from '../screens/AboutScreen';
 import LanguageScreen from '../screens/LanguageScreen';
 import RoomPickerScreen from '../screens/RoomPickerScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -56,6 +57,7 @@ export default function AppNavigator() {
           <Stack.Screen name="About" component={AboutScreen} />
           <Stack.Screen name="Language" component={LanguageScreen} />
           <Stack.Screen name="RoomPicker" component={RoomPickerScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         </Stack.Navigator>
       ) : (
         <AuthStack />

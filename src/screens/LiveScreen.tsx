@@ -1,6 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Animated,
+  Image,
+} from 'react-native';
 import { Audio } from 'expo-av';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,101 +18,152 @@ import { useRoom } from '../context/RoomContext';
 import { useLanguage } from '../context/LanguageContext';
 import { gradients, radius, spacing, typography, shadow } from '../theme';
 
-const FRAME_INTERVAL_MS = 1500;
 
-interface AlertItem { id: string; type: string; message: string; time: string; }
-interface SensorData { temperature: number; humidity: number; }
+
+interface AlertItem {
+  id: string;
+  type: string;
+  message: string;
+  time: string;
+  intensity?: string;
+  snapshot?: string | null;
+}
+interface SensorData {
+  temperature: number;
+  humidity: number;
+}
 
 export default function LiveScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { roomId } = useRoom();
   const { t } = useLanguage();
-  const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [sensorData, setSensorData] = useState<SensorData | null>(null);
-  const cameraRef = useRef<CameraView | null>(null);
+  const [liveFrame, setLiveFrame] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const isBusyRef = useRef(false);
+  const recordingStartTimeRef = useRef(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
+
       async function setup() {
         const socket = await connectMonitorSocket(roomId);
         wsRef.current = socket;
-        socket.onopen = () => { if (isActive) setConnected(true); startFrameCapture(); };
+
+        socket.onopen = () => {
+          if (isActive) setConnected(true);
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(pulseAnim, { toValue: 1.4, duration: 800, useNativeDriver: true }),
+              Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+            ])
+          ).start();
+        };
+
         socket.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          if (data.type === 'motion_alert') addAlert('motion', 'Motion detected in the room');
-          else if (data.type === 'cry_alert') addAlert('cry', 'Crying detected');
-          else if (data.type === 'sensor_update') setSensorData({ temperature: data.temperature, humidity: data.humidity });
+          if (data.type === 'motion_alert') {
+            addAlert('motion', 'Motion detected in the room', data.intensity, data.annotated_frame);
+          } else if (data.type === 'cry_alert') {
+            addAlert('cry', 'Crying detected', data.intensity);
+          } else if (data.type === 'sensor_update') {
+            setSensorData({ temperature: data.temperature, humidity: data.humidity });
+          } else if (data.type === 'frame_broadcast') {
+            setLiveFrame(data.frame);
+          }
         };
-        socket.onclose = () => { if (isActive) setConnected(false); };
-        socket.onerror = () => { if (isActive) setConnected(false); };
+
+        socket.onclose = () => {
+          if (isActive) setConnected(false);
+        };
+
+        socket.onerror = () => {
+          if (isActive) setConnected(false);
+        };
       }
+
       setup();
+
       return () => {
         isActive = false;
-        stopFrameCapture();
         wsRef.current?.close();
         wsRef.current = null;
         setConnected(false);
+        setLiveFrame(null);
       };
-    }, [])
+    }, [roomId])
   );
 
-  function addAlert(type: string, message: string) {
-    const newAlert: AlertItem = { id: Date.now().toString(), type, message, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) };
+  function intensityColor(intensity: string, colors: any) {
+    if (intensity === 'high') return colors.danger;
+    if (intensity === 'medium') return colors.warning;
+    return colors.success;
+  }
+
+  function addAlert(type: string, message: string, intensity?: string, snapshot?: string) {
+    const newAlert: AlertItem = {
+      id: Date.now().toString(),
+      type,
+      message,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      intensity,
+      snapshot: snapshot ? `data:image/jpeg;base64,${snapshot}` : null,
+    };
     setAlerts((prev) => [newAlert, ...prev].slice(0, 20));
   }
 
-  function startFrameCapture() {
-    Animated.loop(Animated.sequence([
-      Animated.timing(pulseAnim, { toValue: 1.4, duration: 800, useNativeDriver: true }),
-      Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-    ])).start();
-
-    intervalRef.current = setInterval(async () => {
-      if (!cameraRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
-      try {
-        const photo = await cameraRef.current.takePictureAsync({ quality: 0.3, base64: true, skipProcessing: true });
-        if (photo?.base64) wsRef.current.send(JSON.stringify({ type: 'video_frame', frame: `data:image/jpeg;base64,${photo.base64}` }));
-      } catch (error) {}
-    }, FRAME_INTERVAL_MS);
-  }
-
-  function stopFrameCapture() {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-  }
-
   async function startTalking() {
+    if (isBusyRef.current || recordingRef.current) return;
+    isBusyRef.current = true;
     try {
       const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+        isBusyRef.current = false;
+        return;
+      }
 
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
 
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       recordingRef.current = recording;
+      recordingStartTimeRef.current = Date.now();
       setIsRecording(true);
     } catch (error) {
       console.log('Failed to start recording', error);
+    } finally {
+      isBusyRef.current = false;
     }
   }
 
   async function stopTalking() {
-    if (!recordingRef.current) return;
+    const recording = recordingRef.current;
+    if (!recording || isBusyRef.current) return;
+    recordingRef.current = null;
+    isBusyRef.current = true;
     setIsRecording(false);
+
+    const elapsed = Date.now() - recordingStartTimeRef.current;
+    if (elapsed < 700) {
+      await new Promise((resolve) => setTimeout(resolve, 700 - elapsed));
+    }
+
     setIsSending(true);
     try {
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
+      const status = await recording.getStatusAsync();
+      if (!status.canRecord && !status.isRecording) {
+        setIsSending(false);
+        isBusyRef.current = false;
+        return;
+      }
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
 
       if (uri && wsRef.current?.readyState === WebSocket.OPEN) {
         const response = await fetch(uri);
@@ -122,31 +180,26 @@ export default function LiveScreen({ navigation }: any) {
       }
     } catch (error) {
       console.log('Failed to send recording', error);
+    } finally {
       setIsSending(false);
+      isBusyRef.current = false;
     }
-  }
-
-  if (!permission) return <View style={[styles.container, { backgroundColor: colors.background }]} />;
-
-  if (!permission.granted) {
-    return (
-      <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
-        <LinearGradient colors={gradients.primary} style={styles.permissionIconCircle}>
-          <Ionicons name="videocam" size={30} color="#fff" />
-        </LinearGradient>
-        <Text style={[styles.permissionTitle, { color: colors.text }]}>{t('cameraAccessNeeded')}</Text>
-        <Text style={[styles.permissionText, { color: colors.textMuted }]}>{t('cameraAccessMsg')}</Text>
-        <TouchableOpacity style={[styles.permissionButton, { backgroundColor: colors.primary }]} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>{t('grantAccess')}</Text>
-        </TouchableOpacity>
-      </View>
-    );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back" />
+        {liveFrame ? (
+          <Image source={{ uri: liveFrame }} style={styles.camera} resizeMode="cover" />
+        ) : (
+          <View style={[styles.camera, styles.noFeedContainer]}>
+            <Ionicons name="videocam-off-outline" size={40} color="rgba(255,255,255,0.4)" />
+            <Text style={styles.noFeedText}>
+              {connected ? 'Waiting for camera feed...' : 'Connecting...'}
+            </Text>
+            <Text style={styles.noFeedSubtext}>Open Child Mode on the monitoring device</Text>
+          </View>
+        )}
         <View style={styles.topOverlay}>
           <View style={styles.statusBadge}>
             <Animated.View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.danger, transform: [{ scale: connected ? pulseAnim : 1 }] }]} />
@@ -192,11 +245,22 @@ export default function LiveScreen({ navigation }: any) {
             </View>
           ) : alerts.map((alert) => (
             <View key={alert.id} style={[styles.alertCard, { backgroundColor: colors.card }]}>
-              <LinearGradient colors={alert.type === 'cry' ? gradients.coral : gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.alertIconCircle}>
-                <Ionicons name={alert.type === 'cry' ? 'volume-high' : 'walk'} size={18} color="#fff" />
-              </LinearGradient>
+              {alert.snapshot ? (
+                <Image source={{ uri: alert.snapshot }} style={styles.alertThumbnail} />
+              ) : (
+                <LinearGradient colors={alert.type === 'cry' ? gradients.coral : gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.alertIconCircle}>
+                  <Ionicons name={alert.type === 'cry' ? 'volume-high' : 'walk'} size={18} color="#fff" />
+                </LinearGradient>
+              )}
               <View style={styles.alertContent}>
-                <Text style={[styles.alertMessage, { color: colors.text }]}>{alert.message}</Text>
+                <View style={styles.alertMessageRow}>
+                  <Text style={[styles.alertMessage, { color: colors.text }]}>{alert.message}</Text>
+                  {alert.intensity && alert.intensity !== 'none' && (
+                    <View style={[styles.intensityBadge, { backgroundColor: intensityColor(alert.intensity, colors) }]}>
+                      <Text style={styles.intensityText}>{alert.intensity}</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={[styles.alertTime, { color: colors.textMuted }]}>{alert.time}</Text>
               </View>
             </View>
@@ -210,7 +274,24 @@ export default function LiveScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   cameraContainer: { height: '45%', backgroundColor: '#000', position: 'relative' },
-  camera: { flex: 1 },
+  camera: {
+    flex: 1,
+  },
+  noFeedContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noFeedText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: spacing.sm,
+  },
+  noFeedSubtext: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    marginTop: spacing.xs,
+  },
   topOverlay: { position: 'absolute', top: spacing.md, left: spacing.md, right: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10, elevation: 10 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radius.xl, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: spacing.sm },
@@ -250,7 +331,36 @@ const styles = StyleSheet.create({
   emptyText: { ...typography.body, fontWeight: '600', marginBottom: spacing.xs },
   emptySubtext: { ...typography.caption, textAlign: 'center' },
   alertCard: { flexDirection: 'row', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, alignItems: 'center', ...shadow.card },
-  alertIconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  alertIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  alertThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    marginRight: spacing.md,
+  },
+  alertMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  intensityBadge: {
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
+    marginLeft: spacing.sm,
+  },
+  intensityText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
   alertContent: { flex: 1 },
   alertMessage: { ...typography.body, fontWeight: '500' },
   alertTime: { ...typography.caption, marginTop: 2 },

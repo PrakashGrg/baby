@@ -56,6 +56,9 @@ export const authAPI = {
     apiClient.post('/auth/login/', { username, password }),
 
   me: () => apiClient.get('/auth/me/'),
+
+  updateMe: (data: Partial<{ username: string; email: string; phone_number: string }>) =>
+    apiClient.patch('/auth/me/', data),
 };
 
 export const activityAPI = {

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,22 +18,32 @@ interface Summary {
   average_humidity_percent: number | null;
 }
 
-export default function HomeScreen() {
+interface TimelineEvent {
+  type: string;
+  message: string;
+  timestamp: string;
+  value: number | null;
+}
+
+export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [sleepState, setSleepState] = useState<string>('unknown');
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   async function loadData() {
     try {
-      const [summaryRes, sleepRes] = await Promise.all([
+      const [summaryRes, sleepRes, timelineRes] = await Promise.all([
         activityAPI.dailySummary(ROOM_NAME),
         sleepAPI.status(ROOM_NAME),
+        activityAPI.timeline(ROOM_NAME),
       ]);
       setSummary(summaryRes.data);
       setSleepState(sleepRes.data.state);
+      setTimeline(timelineRes.data);
     } catch (error) {
       console.log('Failed to load dashboard data', error);
     }
@@ -54,17 +64,36 @@ export default function HomeScreen() {
   }
 
   const isAsleep = sleepState === 'asleep';
+  const lastEvent = timeline[0];
+
+  const hourBuckets = buildHourlyBuckets(timeline);
+  const maxBucket = Math.max(...hourBuckets.map((b) => b.count), 1);
+
+  function formatEventTime(timestamp: string) {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function eventIcon(type: string) {
+    if (type === 'cry') return 'volume-high';
+    if (type === 'sleep') return 'moon';
+    return 'walk';
+  }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.headerRow}>
         <View>
           <Text style={[styles.greeting, { color: colors.text }]}>{t('hello')}, {user?.username}</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>{t('babyDoing')}</Text>
         </View>
-        <View style={[styles.avatarCircle, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity style={[styles.avatarCircle, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('EditProfile')}>
           <Text style={styles.avatarText}>{user?.username?.charAt(0).toUpperCase() ?? '?'}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <LinearGradient colors={isAsleep ? gradients.night : gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
@@ -82,13 +111,89 @@ export default function HomeScreen() {
         <Text style={styles.heroSub}>{isAsleep ? t('restingPeacefully') : t('activeAlert')}</Text>
       </LinearGradient>
 
+      <View style={styles.quickActions}>
+        <QuickAction icon="videocam" label="Live" colors={colors} onPress={() => navigation.navigate('Live')} />
+        <QuickAction icon="happy" label="Baby" colors={colors} onPress={() => navigation.navigate('BabyProfile')} />
+        <QuickAction icon="bar-chart" label="Insights" colors={colors} onPress={() => navigation.navigate('Insights')} />
+        <QuickAction icon="moon" label="Sleep" colors={colors} onPress={() => navigation.navigate('Sleep')} />
+      </View>
+
+      <View style={[styles.chartCard, { backgroundColor: colors.card }]}>
+        <Text style={[styles.chartTitle, { color: colors.text }]}>Activity, last 6 hours</Text>
+        <View style={styles.chartRow}>
+          {hourBuckets.map((bucket, index) => (
+            <View key={index} style={styles.chartBarWrap}>
+              <View style={styles.chartBarTrack}>
+                <View
+                  style={[
+                    styles.chartBar,
+                    {
+                      height: `${Math.max((bucket.count / maxBucket) * 100, bucket.count > 0 ? 8 : 0)}%`,
+                      backgroundColor: bucket.count > 0 ? colors.primary : colors.border,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.chartLabel, { color: colors.textMuted }]}>{bucket.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {lastEvent && (
+        <TouchableOpacity
+          style={[styles.lastEventCard, { backgroundColor: colors.card }]}
+          onPress={() => navigation.navigate('Insights')}
+        >
+          <LinearGradient
+            colors={lastEvent.type === 'cry' ? gradients.coral : lastEvent.type === 'sleep' ? gradients.lavender : gradients.primary}
+            style={styles.lastEventIcon}
+          >
+            <Ionicons name={eventIcon(lastEvent.type) as any} size={18} color="#fff" />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.lastEventLabel, { color: colors.textMuted }]}>LATEST EVENT</Text>
+            <Text style={[styles.lastEventMessage, { color: colors.text }]}>{lastEvent.message}</Text>
+          </View>
+          <Text style={[styles.lastEventTime, { color: colors.textMuted }]}>{formatEventTime(lastEvent.timestamp)}</Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.grid}>
         <StatCard icon="walk-outline" label={t('motionEvents')} value={summary ? summary.motion_event_count.toString() : '-'} gradientColors={gradients.primary} colors={colors} />
         <StatCard icon="volume-high-outline" label={t('cryEvents')} value={summary ? summary.cry_event_count.toString() : '-'} gradientColors={gradients.coral} colors={colors} />
-        <StatCard icon="thermometer-outline" label={t('temperature')} value={summary?.average_temperature_celsius != null ? `${summary.average_temperature_celsius}°C` : '-'} gradientColors={gradients.sunrise} colors={colors} />
-        <StatCard icon="water-outline" label={t('humidity')} value={summary?.average_humidity_percent != null ? `${summary.average_humidity_percent}%` : '-'} gradientColors={gradients.mint} colors={colors} />
       </View>
     </ScrollView>
+  );
+}
+
+function buildHourlyBuckets(timeline: TimelineEvent[]) {
+  const now = new Date();
+  const buckets = [];
+  for (let i = 5; i >= 0; i--) {
+    const bucketTime = new Date(now.getTime() - i * 60 * 60 * 1000);
+    const hourStart = new Date(bucketTime);
+    hourStart.setMinutes(0, 0, 0);
+    const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
+
+    const count = timeline.filter((e) => {
+      const t = new Date(e.timestamp).getTime();
+      return t >= hourStart.getTime() && t < hourEnd.getTime();
+    }).length;
+
+    buckets.push({ label: hourStart.getHours().toString().padStart(2, '0'), count });
+  }
+  return buckets;
+}
+
+function QuickAction({ icon, label, colors, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; colors: any; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.quickActionItem} onPress={onPress}>
+      <View style={[styles.quickActionIcon, { backgroundColor: colors.card }]}>
+        <Ionicons name={icon} size={20} color={colors.primary} />
+      </View>
+      <Text style={[styles.quickActionLabel, { color: colors.textMuted }]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -121,6 +226,22 @@ const styles = StyleSheet.create({
   heroIcon: { marginRight: spacing.sm },
   heroStatus: { ...typography.h1, fontSize: 34, color: '#fff' },
   heroSub: { ...typography.body, color: 'rgba(255,255,255,0.85)', marginTop: spacing.xs },
+  quickActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.lg },
+  quickActionItem: { alignItems: 'center', flex: 1 },
+  quickActionIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs, ...shadow.card },
+  quickActionLabel: { fontSize: 12, fontWeight: '600' },
+  chartCard: { borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.lg, ...shadow.card },
+  chartTitle: { ...typography.caption, fontWeight: '600', marginBottom: spacing.md },
+  chartRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 70 },
+  chartBarWrap: { alignItems: 'center', flex: 1 },
+  chartBarTrack: { width: 14, height: 50, justifyContent: 'flex-end' },
+  chartBar: { width: 14, borderRadius: 7 },
+  chartLabel: { fontSize: 10, marginTop: spacing.xs },
+  lastEventCard: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, ...shadow.card },
+  lastEventIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  lastEventLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  lastEventMessage: { ...typography.body, fontWeight: '600', marginTop: 2 },
+  lastEventTime: { fontSize: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   statusCard: { width: '48%', borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, ...shadow.card },
   statusIconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },

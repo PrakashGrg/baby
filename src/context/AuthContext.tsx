@@ -1,8 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as SecureStore from 'expo-secure-store';
-import { authAPI } from '../api/client';
-import { registerForPushNotifications } from '../utils/notifications';
-
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import * as SecureStore from "expo-secure-store";
+import { authAPI } from "../api/client";
+import { registerForPushNotifications } from "../utils/notifications";
 
 interface User {
   id: number;
@@ -16,8 +21,13 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    password: string,
+    email?: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,49 +42,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadStoredAuth() {
     try {
-      const token = await SecureStore.getItemAsync('access_token');
+      const token = await SecureStore.getItemAsync("access_token");
+
       if (token) {
-        const response = await authAPI.me();
-        setUser(response.data);
+        await refreshUser();
+
         registerForPushNotifications().catch((error) => {
-          console.log('Push registration failed', error);
+          console.log("Push registration failed:", error);
         });
       }
     } catch (error) {
-      // Token invalid/expired — clear it
-      await SecureStore.deleteItemAsync('access_token');
-      await SecureStore.deleteItemAsync('refresh_token');
+      console.log("Failed to restore auth:", error);
+
+      await SecureStore.deleteItemAsync("access_token");
+      await SecureStore.deleteItemAsync("refresh_token");
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
   }
 
+  async function refreshUser() {
+    const response = await authAPI.me();
+    setUser(response.data);
+  }
+
   async function login(username: string, password: string) {
     const response = await authAPI.login(username, password);
-    await SecureStore.setItemAsync('access_token', response.data.access);
-    await SecureStore.setItemAsync('refresh_token', response.data.refresh);
 
-    const meResponse = await authAPI.me();
-    setUser(meResponse.data);
+    await SecureStore.setItemAsync(
+      "access_token",
+      response.data.access
+    );
+
+    await SecureStore.setItemAsync(
+      "refresh_token",
+      response.data.refresh
+    );
+
+    await refreshUser();
 
     registerForPushNotifications().catch((error) => {
-      console.log('Push registration failed', error);
+      console.log("Push registration failed:", error);
     });
   }
 
-  async function register(username: string, password: string, email?: string) {
+  async function register(
+    username: string,
+    password: string,
+    email?: string
+  ) {
     await authAPI.register(username, password, email);
     await login(username, password);
   }
 
   async function logout() {
-    await SecureStore.deleteItemAsync('access_token');
-    await SecureStore.deleteItemAsync('refresh_token');
-    setUser(null);
+    try {
+      await SecureStore.deleteItemAsync("access_token");
+      await SecureStore.deleteItemAsync("refresh_token");
+    } finally {
+      setUser(null);
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -82,8 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
+
   return context;
 }

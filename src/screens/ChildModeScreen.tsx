@@ -2,19 +2,22 @@ import React, { useRef, useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { connectMonitorSocket } from '../api/websocket';
 import { useTheme } from '../context/ThemeContext';
 import { useRoom } from '../context/RoomContext';
+import { useLanguage } from '../context/LanguageContext';
 import { gradients, radius, spacing, typography, shadow } from '../theme';
 
-const FRAME_INTERVAL_MS = 1500;
+const FRAME_INTERVAL_MS = 2000;
 
 export default function ChildModeScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { roomId } = useRoom();
+  const { t } = useLanguage();
   const [permission, requestPermission] = useCameraPermissions();
   const [connected, setConnected] = useState(false);
   const [facing, setFacing] = useState<'front' | 'back'>('front');
@@ -48,6 +51,7 @@ export default function ChildModeScreen({ navigation }: any) {
           if (data.type === 'parent_voice' && data.audio) {
             playParentVoice(data.audio);
           }
+          // frame_broadcast messages are ignored here — Child Mode is the sender, not a viewer
         };
         socket.onclose = () => { if (isActive) setConnected(false); };
         socket.onerror = () => { if (isActive) setConnected(false); };
@@ -70,9 +74,10 @@ export default function ChildModeScreen({ navigation }: any) {
       if (!cameraRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.3,
+          quality: 0.2,
           base64: true,
           skipProcessing: true,
+          imageType: 'jpg',
         });
         if (photo?.base64) {
           wsRef.current.send(
