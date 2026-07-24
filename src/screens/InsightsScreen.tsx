@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ const ROOM_NAME = 'room1';
 
 interface TimelineEvent { type: string; message: string; timestamp: string; value: number | null; }
 
-export default function InsightsScreen() {
+export default function InsightsScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -56,7 +56,13 @@ export default function InsightsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <Text style={[styles.title, { color: colors.text }]}>{t('insights')}</Text>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.text }]}>{t('insights')}</Text>
+        <View style={{ width: 24 }} />
+      </View>
       <Text style={[styles.subtitle, { color: colors.textMuted }]}>{t('insightsSubtitle')}</Text>
 
       {events.length === 0 ? (
@@ -82,6 +88,7 @@ export default function InsightsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.lg, paddingTop: spacing.xl },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...typography.h1 },
   subtitle: { ...typography.body, marginTop: spacing.xs, marginBottom: spacing.lg },
   emptyState: { alignItems: 'center', paddingVertical: spacing.xl },

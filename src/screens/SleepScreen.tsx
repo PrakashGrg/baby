@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ const ROOM_NAME = 'room1';
 
 interface SleepLogEntry { id: number; room_name: string; state: string; changed_at: string; }
 
-export default function SleepScreen() {
+export default function SleepScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [currentState, setCurrentState] = useState<string>('unknown');
@@ -61,7 +61,13 @@ export default function SleepScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <Text style={[styles.title, { color: colors.text }]}>{t('sleepTracking')}</Text>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.text }]}>{t('sleepTracking')}</Text>
+        <View style={{ width: 24 }} />
+      </View>
       <Text style={[styles.subtitle, { color: colors.textMuted }]}>Room: {ROOM_NAME}</Text>
 
       <LinearGradient colors={currentState === 'asleep' ? gradients.night : gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
@@ -104,7 +110,10 @@ export default function SleepScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.lg, paddingTop: spacing.xl },
-  title: { ...typography.h1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: {
+    ...typography.h1,
+  },
   subtitle: { ...typography.body, marginTop: spacing.xs, marginBottom: spacing.lg },
   heroCard: { borderRadius: radius.xxl, padding: spacing.lg, marginBottom: spacing.md, ...shadow.soft },
   heroLabel: { ...typography.caption, color: 'rgba(255,255,255,0.8)' },

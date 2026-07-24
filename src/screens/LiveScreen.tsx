@@ -201,9 +201,14 @@ export default function LiveScreen({ navigation }: any) {
           </View>
         )}
         <View style={styles.topOverlay}>
-          <View style={styles.statusBadge}>
-            <Animated.View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.danger, transform: [{ scale: connected ? pulseAnim : 1 }] }]} />
-            <Text style={styles.statusText}>{connected ? t('live') : t('connecting')}</Text>
+          <View style={styles.topOverlayLeft}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Home')}>
+              <Ionicons name="chevron-back" size={20} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.statusBadge}>
+              <Animated.View style={[styles.statusDot, { backgroundColor: connected ? colors.success : colors.danger, transform: [{ scale: connected ? pulseAnim : 1 }] }]} />
+              <Text style={styles.statusText}>{connected ? t('live') : t('connecting')}</Text>
+            </View>
           </View>
           <TouchableOpacity style={styles.roomBadge} onPress={() => navigation.navigate('RoomPicker')}>
             <Text style={styles.roomBadgeText}>{roomId}</Text>
@@ -292,8 +297,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: spacing.xs,
   },
-  topOverlay: { position: 'absolute', top: spacing.md, left: spacing.md, right: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10, elevation: 10 },
+  topOverlay: { position: 'absolute', top: spacing.md, left: spacing.md, right: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, elevation: 10 },
+  topOverlayLeft: { flexDirection: 'row', alignItems: 'center' },
   statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radius.xl, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  backButton: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
   statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: spacing.sm },
   statusText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   roomBadge: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radius.xl, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },

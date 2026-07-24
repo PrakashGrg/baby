@@ -51,7 +51,13 @@ export default function SettingsScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.text }]}>{t('settings')}</Text>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: colors.text }]}>{t('settings')}</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
         <LinearGradient colors={gradients.primary} style={styles.avatarCircle}>
@@ -108,7 +114,8 @@ function SettingsSection({ title, rows, colors }: { title: string; rows: Setting
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xl },
-  title: { ...typography.h1, marginBottom: spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  title: { ...typography.h1 },
   profileCard: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.lg, ...shadow.card },
   avatarCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
   avatarText: { color: '#fff', fontSize: 22, fontWeight: '700' },
