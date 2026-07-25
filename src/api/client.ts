@@ -5,7 +5,7 @@ const BASE_URL = 'https://baby-care-8ewi.onrender.com/api';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 60000,
 });
 
 // Attach access token to every request automatically
@@ -34,6 +34,10 @@ apiClient.interceptors.response.use(
 
         const newAccessToken = response.data.access;
         await SecureStore.setItemAsync('access_token', newAccessToken);
+
+        if (response.data.refresh) {
+          await SecureStore.setItemAsync('refresh_token', response.data.refresh);
+      }
 
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
