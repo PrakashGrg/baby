@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "babycare-app",
+    "name": "Baby Care",
     "slug": "babycare-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,21 +13,53 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.prakashgrg.babycare",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to monitor the baby in Child Mode.",
+        "NSMicrophoneUsageDescription": "Used for cry detection and parent voice."
+      }
     },
     "android": {
+      "package": "com.prakashgrg.babycare",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-dev-client",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#5B8DEF"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Baby Care to use the camera to monitor the baby."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "76d763b2-28f4-483d-b336-5a5809a3714f"
+      }
+    },
+    "owner": "prakash_jester"
   }
 }
